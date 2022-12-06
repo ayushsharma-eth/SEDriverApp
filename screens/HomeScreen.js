@@ -13,15 +13,13 @@ import { Marker } from 'react-native-maps';
 
 import * as Location from 'expo-location';
 
-
-
 // Component to Show Restaurants quickly
 
 
 function RestaurantCard({navigation, data, userInfo}) {
 
   return (
-      <TouchableOpacity className='border-2 border-gray-300 rounded-2xl w-[85vw] pb-2 mt-8' 
+      <TouchableOpacity className='border-2 border-gray-300 rounded-2xl w-[85vw] pb-2 mt-4' 
         onPress={() => navigation.navigate('Restaurant', {
           data: data,
           userInfo: userInfo
@@ -43,12 +41,85 @@ function RestaurantCard({navigation, data, userInfo}) {
   )
 }
 
+// Component to Show Active Orders
+
+function ActiveOrderCard({navigation, data, userInfo}) {
+
+  const [restaurant, setRestaurant] = useState([])
+
+  const getRestaurants = () => {
+    fetch(`http://sebackend-env.eba-tmkzmafs.us-east-1.elasticbeanstalk.com/getRestaurant/${data.restaurant}`)
+    .then(async(res) => await res.json())
+    .then((data) => {
+      setRestaurant(data)
+      console.log("Restaurant", restaurant)
+    })
+  }
+
+  useEffect(() => {
+    getRestaurants();
+  }, [])
+
+}
+  
+  function DeliveryCard({navigation, data, userInfo}) {
+
+    const [restaurant, setRestaurant] = useState([])
+  
+    const getRestaurants = () => {
+      fetch(`http://sebackend-env.eba-tmkzmafs.us-east-1.elasticbeanstalk.com/getRestaurant/${data.restaurant}`)
+      .then(async(res) => await res.json())
+      .then((data) => {
+        setRestaurant(data)
+        console.log("Restaurant", restaurant)
+      })
+    }
+  
+    useEffect(() => {
+      getRestaurants();
+    }, [])
+
+  return (
+    <TouchableOpacity className='border-2 border-gray-300 rounded-2xl w-[85vw] pb-2 mt-4' 
+      onPress={() => navigation.navigate('Order', {
+        userInfo: userInfo
+      })}
+    >
+      <View className="flex flex-row justify-between">
+          { restaurant && restaurant[0] && <Text className="pl-4 py-2 text-2xl font-medium my-auto">{restaurant[0].name}</Text>}
+      </View>
+      {/* Testing Map View for use in Order Screen and thumbnail view on Home Screen. These coords map to a Taco Bell. */}
+      <View className="rounded-3xl overflow-hidden w-[75vw] mx-auto">
+        { restaurant && restaurant[0] && <MapView
+              initialRegion={{
+              latitude: restaurant[0].xCor,
+              longitude: restaurant[0].yCor,
+              latitudeDelta: 0.000922,
+              longitudeDelta: 0.000421,
+              }}
+              className='w-[85vw] mx-auto h-[200px] mt-[-2px] overflow-hidden border-gray-400 border-2'
+          >
+              <Marker
+                  coordinate={{ latitude : restaurant[0].xCor , longitude : restaurant[0].yCor }}
+              />
+        </MapView>}
+      </View>
+      
+      <View className="flex flex-row justify-between">
+          <Text className="pl-4 pt-2 text-xl font-medium my-auto">On The Way</Text>
+          <Text className="pr-4 pt-2 text-xl font-medium my-auto text-right">2 min</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 function HomeScreen({navigation, route}) {
 
   const { userInfo } = route.params;
   const [text, setText] = useState('have not called');
 
   const [restaurants, setRestaurants] = useState([]);
+  const [orders, setOrders] = useState([]);
 
   const getText = () => {
     fetch('http://sebackend-env.eba-tmkzmafs.us-east-1.elasticbeanstalk.com/getRestaurant/4')
@@ -97,6 +168,12 @@ function HomeScreen({navigation, route}) {
 
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
+      // call the near orders
+      fetch(`http://sebackend-env.eba-tmkzmafs.us-east-1.elasticbeanstalk.com/getAllNearOrders/${location.coords.latitude}/${location.coords.longitude}/10000`)
+      .then(async(res) => await res.json())
+      .then(async (data) => {
+        setOrders(data)
+      })
     })();
   }, []);
 
@@ -111,10 +188,20 @@ function HomeScreen({navigation, route}) {
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       <View className="flex-1 items-center justify-center bg-white">
+        <View className='h-16'/>
+        { userInfo && <Text className="text-4xl text-left w-[85vw] font-bold">Welcome Driver {userInfo[0].username}</Text>}
+        { userInfo && <Text className="text-3xl text-left w-[85vw] font-medium"> Driver ID: 32874{userInfo[0].username}</Text>}
+        <Text className="text-3xl text-left w-[85vw] mt-8 font-medium">Active Orders</Text>
 
-        
+        {orders.map((e, i) => {
+          return (
+            <DeliveryCard navigation={navigation} data={orders[i]} userInfo={userInfo}/>
+          )
+        })}
+
+        <Text className="text-3xl text-left w-[85vw] mt-8 font-medium">Contact Resteruants</Text>
         {/* Render all restaurants */}
-        <View className='h-8'/>
+        {/* <View className='h-4'/> */}
         {
           restaurants.map((e, i) => {
             return (
